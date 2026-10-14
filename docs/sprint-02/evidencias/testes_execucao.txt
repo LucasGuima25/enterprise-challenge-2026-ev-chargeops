@@ -1,0 +1,10 @@
+TESTES — EV ChargeOps, Sprint 02
+Execucao local automatizada (SQLite isolado): 28 passed in 2.82s.
+Historico sintetico: 99 sessoes.
+Modelo Random Forest: MAE 14.575; media movel 7 dias: MAE 9.848; nao superou baseline.
+Isolation Forest: 8 anomalias sinalizadas.
+Recomendacoes: 3.
+Rateio outubro de 2026, valores iniciais: U001 R$21,65; U002 R$26,60.
+Limitacao: execucao com PostgreSQL nao validada neste ambiente. Medicoes simuladas e modelos nao demonstram desempenho em carregador real.
+Reproducao: cd backend && ..\.venv\Scripts\python.exe -m pytest -q
+A IA nunca cobra automaticamente nem prova fraude.
