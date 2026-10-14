@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EV ChargeOps — GoodWe + FIAP</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;background:#f3f6fa;color:#182638}*{box-sizing:border-box}body{margin:0}header{padding:23px 5%;background:#11253b;color:white}h1{margin:0}header small{color:#a9c2d9}main{max-width:1190px;margin:25px auto;padding:0 18px}.tabs{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}.tabs button,button{padding:10px 14px;border:0;border-radius:8px;cursor:pointer;background:#dce7f0}button.active,button.primary{background:#096ba1;color:white}.panel{background:white;border:1px solid #e2e7f0;padding:18px;border-radius:13px;margin:14px 0;overflow-x:auto}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:13px}.metric{background:white;padding:18px;border-radius:12px}.metric strong{display:block;font-size:23px;margin-top:7px}table{width:100%;border-collapse:collapse;white-space:nowrap}td,th{text-align:left;border-bottom:1px solid #e5eaf0;padding:10px}th{font-size:13px;color:#506477}label{display:flex;flex-direction:column;gap:5px}input,select{padding:10px;border:1px solid #c9d6e2;border-radius:7px;min-width:0}.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.notice{background:#fff2db;padding:12px;border-radius:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere}footer{margin:40px auto;color:#60758a;max-width:1190px;padding:0 18px}
+</style></head><body><div id="app"></div>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+(function(){
+'use strict';
+const H=React.createElement, API='http://127.0.0.1:8000';
+const el=(tag,props,...children)=>H(tag,props,...children), money=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const initial={usuario_id:'U001',carregador_id:'C001',inicio:'2026-10-14T14:00',fim:'2026-10-14T16:00',energia_kwh:'10',estado:'concluida'};
+function Table({cols,rows}){return el('table',null,el('thead',null,el('tr',null,cols.map(x=>el('th',{key:x},x)))),el('tbody',null,rows.map((r,i)=>el('tr',{key:i},r.map((v,j)=>el('td',{key:j},String(v??''))))));}
+function App(){
+const [page,setPage]=React.useState('Visão geral'),[period,setPeriod]=React.useState('2026-10'),[data,setData]=React.useState(null),[form,setForm]=React.useState(initial),[error,setError]=React.useState(''),[busy,setBusy]=React.useState(false);
+async function reload(){setBusy(true);setError('');try{const paths=['users','chargers','sessions','invoices?period='+period,'ai/forecast','ai/anomalies','ai/recommendations'];const results=await Promise.all(paths.map(p=>fetch(API+'/api/'+p).then(async r=>{if(!r.ok)throw Error(p+' HTTP '+r.status);return r.json();})));setData({users:results[0],chargers:results[1],sessions:results[2],invoices:results[3],forecast:results[4],anomalies:results[5],recommendations:results[6]});}catch(e){setError(e.message)}finally{setBusy(false)}}
+React.useEffect(()=>{reload()},[period]);
+async function save(e){e.preventDefault();setBusy(true);try{const payload={...form,id:'WEB-'+Date.now(),inicio:form.inicio+':00-03:00',fim:form.fim+':00-03:00',origem:'manual',validado:form.estado!=='falha_comunicacao'};const r=await fetch(API+'/api/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw Error(JSON.stringify(await r.json()));await reload();setPage('Rateio');}catch(e){setError(e.message)}finally{setBusy(false)}}
+const invoices=data?.invoices||[], sessions=data?.sessions||[], ai=data?.forecast||{},anom=data?.anomalies||{}, rec=data?.recommendations||{};
+const total=(field)=>invoices.reduce((v,x)=>v+Number(x[field]||0),0);
+const metric=(title,value)=>el('div',{className:'metric'},title,el('strong',null,value));
+return el(React.Fragment,null,
+el('header',null,el('h1',null,'EV ChargeOps'),el('small',null,'Enterprise Challenge 2026 · GoodWe + FIAP · Grupo 20 · Protótipo demonstrativo')),
+el('main',null,el('p',{className:'notice'},'DADOS FICTÍCIOS: nenhuma conexão física com GoodWe HCA G2 / SEMS+ e nenhuma cobrança financeira real.'),
+el('div',{className:'tabs'},['Visão geral','Sessões','Rateio','Inteligência artificial'].map(x=>el('button',{key:x,className:page===x?'active':'',onClick:()=>setPage(x)},x)),el('button',{onClick:reload,disabled:busy},busy?'Consultando...':'Atualizar'),el('input',{type:'month',value:period,onChange:e=>setPeriod(e.target.value)})),
+error&&el('p',{className:'notice'},'Erro: '+error+' · Execute primeiro o backend em 127.0.0.1:8000.'),
+!data?el('p',null,'Aguardando dados do FastAPI...'):
+page==='Visão geral'?el(React.Fragment,null,el('div',{className:'metrics'},metric('Consumo faturável',total('energia_kwh').toFixed(3)+' kWh'),metric('Rateio mensal',money(total('total'))),metric('Sessões',sessions.length),metric('Pendências',total('sessoes_pendentes'))),el('div',{className:'panel'},el('h2',null,'Recomendações operacionais'),(rec.recomendacoes||[]).map((x,i)=>el('p',{key:i},x.prioridade+': '+x.mensagem))),el('div',{className:'panel'},el('h2',null,'Resumo dos usuários'),el(Table,{cols:['Usuário','kWh','Total'],rows:invoices.map(x=>[x.usuario_nome,x.energia_kwh,money(x.total)])}))):
+page==='Sessões'?el(React.Fragment,null,el('div',{className:'panel'},el('h2',null,'Cadastrar sessão'),el('form',{className:'form',onSubmit:save},[['usuario_id','Usuário',data.users.map(x=>x.id)],['carregador_id','Carregador',data.chargers.map(x=>x.id)],['inicio','Início'],['fim','Fim'],['energia_kwh','Energia (kWh)'],['estado','Estado',['concluida','interrompida','falha_comunicacao']]].map(([key,label,opts])=>el('label',{key},label,opts?el('select',{value:form[key],onChange:e=>setForm({...form,[key]:e.target.value})},opts.map(o=>el('option',{key:o,value:o},o))):el('input',{required:true,type:key==='inicio'||key==='fim'?'datetime-local':key==='energia_kwh'?'number':'text',min:key==='energia_kwh'?'0':undefined,step:key==='energia_kwh'?'0.001':undefined,value:form[key],onChange:e=>setForm({...form,[key]:e.target.value})}))),el('button',{className:'primary',disabled:busy,type:'submit'},'Registrar sessão'))),el('div',{className:'panel'},el('h2',null,'Histórico de sessões'),el(Table,{cols:['ID','Usuário','Carregador','kWh','Estado','Validado'],rows:sessions.slice(-100).reverse().map(x=>[x.id,x.usuario_id,x.carregador_id,x.energia_kwh,x.estado,x.validado?'Sim':'Não'])}))):
+page==='Rateio'?el('div',{className:'panel'},el('h2',null,'Rateio individual — '+period),el('p',null,'Os valores de tarifa e manutenção são recebidos da API (sem preços fixos na interface).'),el(Table,{cols:['Usuário','Sessões','kWh','Tarifa/kWh','Energia','Manutenção','Total','Status'],rows:invoices.map(x=>[x.usuario_nome,x.sessoes_cobradas,x.energia_kwh,money(x.tarifa_kwh),money(x.custo_energia),money(x.taxa_manutencao),money(x.total),x.situacao])})):
+el(React.Fragment,null,el('div',{className:'panel'},el('h2',null,'Previsão de demanda — Random Forest'),el('p',null,'Dados simulados. O modelo pode ser pior que a média móvel de referência.'),el('pre',null,JSON.stringify(ai,null,2))),el('div',{className:'panel'},el('h2',null,'Detecção de anomalias — Isolation Forest'),el('pre',null,JSON.stringify(anom,null,2))),el('div',{className:'panel'},el('h2',null,'Recomendações integradas'),el('pre',null,JSON.stringify(rec,null,2))))),
+el('footer',null,'GoodWe + FIAP · Sprint 2 · 2026 · Simulação acadêmica')
+)}
+ReactDOM.createRoot(document.getElementById('app')).render(el(App));
+})();
+</script></body></html>
