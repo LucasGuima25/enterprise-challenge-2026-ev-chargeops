@@ -1,0 +1,5 @@
+............................                                             [100%]
+28 passed in 2.82s
+
+Versão com endpoint GET /api/config e tarifa dinâmica na interface.
+Testes em banco SQLite isolado; execução em PostgreSQL pendente de validação local.

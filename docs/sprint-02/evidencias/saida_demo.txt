@@ -1,0 +1,6 @@
+Historico sintetico: 99 sessoes geradas.
+Previsao: 7 dias | MAE modelo: 14.575 | MAE media movel: 9.848 | supera baseline: False
+Anomalias identificadas: 8
+Recomendacoes: 3
+Faturas outubro: U001 R$ 21,65; U002 R$ 26,60.
+Respostas de API gravadas em: /mnt/data/EV_ChargeOps_Sprint2_Final/docs/sprint-02/evidencias/ia_resultados_demo.json

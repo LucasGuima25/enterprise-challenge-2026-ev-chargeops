@@ -1,0 +1,260 @@
+{
+  "contexto": "EV ChargeOps - demonstracao funcional, simulacao didatica; sem equipamento GoodWe real",
+  "ambiente": "FastAPI TestClient + banco SQLite isolado (PostgreSQL permanece configuracao padrao da aplicacao)",
+  "sessoes_historicas_novas": 99,
+  "respostas_api": {
+    "saude": {
+      "status": "ok",
+      "versao": "sprint-2-final",
+      "fonte": "dados_simulados"
+    },
+    "faturas_outubro": [
+      {
+        "periodo": "2026-10",
+        "usuario_id": "U001",
+        "usuario_nome": "Usuário fictício 1",
+        "sessoes_cobradas": 1,
+        "sessoes_pendentes": 0,
+        "energia_kwh": "18.500",
+        "tarifa_kwh": "0.90",
+        "custo_energia": "16.65",
+        "taxa_manutencao": "5.00",
+        "total": "21.65",
+        "situacao": "com_consumo"
+      },
+      {
+        "periodo": "2026-10",
+        "usuario_id": "U002",
+        "usuario_nome": "Usuário fictício 2",
+        "sessoes_cobradas": 1,
+        "sessoes_pendentes": 0,
+        "energia_kwh": "24.000",
+        "tarifa_kwh": "0.90",
+        "custo_energia": "21.60",
+        "taxa_manutencao": "5.00",
+        "total": "26.60",
+        "situacao": "com_consumo"
+      },
+      {
+        "periodo": "2026-10",
+        "usuario_id": "U003",
+        "usuario_nome": "Usuário fictício 3",
+        "sessoes_cobradas": 0,
+        "sessoes_pendentes": 0,
+        "energia_kwh": "0",
+        "tarifa_kwh": "0.90",
+        "custo_energia": "0.00",
+        "taxa_manutencao": "0.00",
+        "total": "0.00",
+        "situacao": "sem_consumo"
+      },
+      {
+        "periodo": "2026-10",
+        "usuario_id": "U004",
+        "usuario_nome": "Usuário fictício 4",
+        "sessoes_cobradas": 0,
+        "sessoes_pendentes": 1,
+        "energia_kwh": "0",
+        "tarifa_kwh": "0.90",
+        "custo_energia": "0.00",
+        "taxa_manutencao": "0.00",
+        "total": "0.00",
+        "situacao": "pendencia_para_revisao"
+      }
+    ],
+    "previsao": {
+      "status": "ok",
+      "fonte": "sessoes_validadas_do_banco",
+      "modelo": "RandomForestRegressor",
+      "horizonte_dias": 7,
+      "sessoes_analisadas": 101,
+      "dias_historicos": 103,
+      "aviso": "Apenas dados simulados; não representa previsão para equipamento real.",
+      "mensagem": "Treino e inferência concluídos.",
+      "periodo_historico": {
+        "inicio": "2026-07-01",
+        "fim": "2026-10-11"
+      },
+      "metricas": {
+        "treino_dias": 77,
+        "teste_dias": 19,
+        "mae_modelo_kwh": 14.575,
+        "mae_baseline_media_7d_kwh": 9.848,
+        "supera_baseline": false,
+        "validacao": "cronologica_um_passo_a_frente"
+      },
+      "limiar_pico_kwh": 24.127,
+      "previsoes": [
+        {
+          "data": "2026-10-12",
+          "kwh_previstos": 11.486,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-13",
+          "kwh_previstos": 11.618,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-14",
+          "kwh_previstos": 12.221,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-15",
+          "kwh_previstos": 11.196,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-16",
+          "kwh_previstos": 8.691,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-17",
+          "kwh_previstos": 10.887,
+          "acima_limiar_historico": false
+        },
+        {
+          "data": "2026-10-18",
+          "kwh_previstos": 10.884,
+          "acima_limiar_historico": false
+        }
+      ]
+    },
+    "anomalias": {
+      "status": "ok",
+      "fonte": "sessoes_validadas_do_banco",
+      "modelo": "IsolationForest",
+      "sessoes_analisadas": 101,
+      "aviso": "Anomalia estatística não é prova de fraude, falha elétrica ou defeito.",
+      "mensagem": "Detecção estatística concluída.",
+      "total_anomalias": 8,
+      "anomalias": [
+        {
+          "sessao_id": "H20260915A",
+          "usuario_id": "U001",
+          "inicio_local": "2026-09-15T09:00:00-03:00",
+          "energia_kwh": 47.0,
+          "duracao_horas": 3.0,
+          "potencia_media_kw": 15.667,
+          "score": -0.16115,
+          "indicadores_descritivos": [
+            "energia elevada comparada à mediana",
+            "potência média elevada comparada à mediana"
+          ]
+        },
+        {
+          "sessao_id": "H20260909A",
+          "usuario_id": "U004",
+          "inicio_local": "2026-09-09T09:00:00-03:00",
+          "energia_kwh": 10.824,
+          "duracao_horas": 1.04,
+          "potencia_media_kw": 10.408,
+          "score": -0.11326,
+          "indicadores_descritivos": [
+            "sessão interrompida"
+          ]
+        },
+        {
+          "sessao_id": "H20260701A",
+          "usuario_id": "U002",
+          "inicio_local": "2026-07-01T09:00:00-03:00",
+          "energia_kwh": 25.714,
+          "duracao_horas": 2.58,
+          "potencia_media_kw": 9.967,
+          "score": -0.1023,
+          "indicadores_descritivos": [
+            "energia elevada comparada à mediana",
+            "sessão interrompida"
+          ]
+        },
+        {
+          "sessao_id": "H20260731A",
+          "usuario_id": "U001",
+          "inicio_local": "2026-07-31T09:00:00-03:00",
+          "energia_kwh": 11.33,
+          "duracao_horas": 1.69,
+          "potencia_media_kw": 6.704,
+          "score": -0.0922,
+          "indicadores_descritivos": [
+            "sessão interrompida"
+          ]
+        },
+        {
+          "sessao_id": "S002",
+          "usuario_id": "U002",
+          "inicio_local": "2026-10-11T07:00:00-03:00",
+          "energia_kwh": 24.0,
+          "duracao_horas": 3.0,
+          "potencia_media_kw": 8.0,
+          "score": -0.07373,
+          "indicadores_descritivos": [
+            "energia elevada comparada à mediana"
+          ]
+        },
+        {
+          "sessao_id": "S001",
+          "usuario_id": "U001",
+          "inicio_local": "2026-10-10T07:00:00-03:00",
+          "energia_kwh": 18.5,
+          "duracao_horas": 3.0,
+          "potencia_media_kw": 6.167,
+          "score": -0.0525,
+          "indicadores_descritivos": [
+            "combinação atípica de consumo, duração e horário"
+          ]
+        },
+        {
+          "sessao_id": "H20260731B",
+          "usuario_id": "U002",
+          "inicio_local": "2026-07-31T16:00:00-03:00",
+          "energia_kwh": 5.16,
+          "duracao_horas": 1.04,
+          "potencia_media_kw": 4.962,
+          "score": -0.01483,
+          "indicadores_descritivos": [
+            "combinação atípica de consumo, duração e horário"
+          ]
+        },
+        {
+          "sessao_id": "H20260803B",
+          "usuario_id": "U002",
+          "inicio_local": "2026-08-03T16:00:00-03:00",
+          "energia_kwh": 7.421,
+          "duracao_horas": 1.61,
+          "potencia_media_kw": 4.609,
+          "score": -0.00389,
+          "indicadores_descritivos": [
+            "combinação atípica de consumo, duração e horário"
+          ]
+        }
+      ]
+    },
+    "recomendacoes": {
+      "status": "ok",
+      "fonte": "resultados_dos_modelos_sobre_sessoes_do_banco",
+      "recomendacoes": [
+        {
+          "tipo": "validacao",
+          "prioridade": "alta",
+          "mensagem": "O modelo não superou a média histórica de 7 dias; não automatizar decisões de agendamento.",
+          "evidencia": "MAE modelo 14.575 kWh; MAE baseline 9.848 kWh."
+        },
+        {
+          "tipo": "demanda",
+          "prioridade": "baixa",
+          "mensagem": "Não foram previstos dias acima do limiar histórico no horizonte avaliado.",
+          "evidencia": "Limiar P75: 24.127 kWh; horizonte 7 dias."
+        },
+        {
+          "tipo": "revisao",
+          "prioridade": "alta",
+          "mensagem": "Solicite revisão humana das sessões atípicas antes de tomar decisões.",
+          "evidencia": "8 sinalizadas; mais atípica: H20260915A, score -0.16115."
+        }
+      ],
+      "aviso": "Orientações indicativas para operador humano; não acionam carregadores."
+    }
+  }
+}
