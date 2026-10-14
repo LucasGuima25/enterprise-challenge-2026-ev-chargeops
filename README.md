@@ -144,6 +144,8 @@ As cinco capturas abaixo representam o dashboard React executado com respostas d
 | IA | [Previsões, anomalias e recomendações](docs/sprint-02/evidencias/04-inteligencia-artificial.webp) |
 | Cadastro | [Sessão cadastrada e confirmada](docs/sprint-02/evidencias/05-cadastro-confirmado.webp) |
 
+**Apresentação técnica:** [Guia do pitch de 5 minutos, demonstração e perguntas da banca](docs/sprint-02/guia_pitch_5_min.md).
+
 **Evidências reproduzíveis:** [28 testes automatizados](docs/sprint-02/evidencias/resultados_testes_finais.txt) · [saída da demonstração](docs/sprint-02/evidencias/saida_demo.txt) · [dados JSON de IA](docs/sprint-02/evidencias/ia_resultados_demo.json) · [decisões e diferenças da Sprint 1](docs/sprint-02/decisoes_finais.md).
 
 ## Rastreabilidade da rubrica — Sprint 2
