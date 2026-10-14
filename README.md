@@ -1,3 +1,212 @@
+# EV ChargeOps — Enterprise Challenge 2026 | GoodWe + FIAP
+
+**Grupo 20 · Sprint 01 (pesquisa/arquitetura) + Sprint 02 (protótipo funcional)**
+
+> **Protótipo acadêmico demonstrativo, sem conexão física com o carregador GoodWe e sem pagamento real.** Todas as sessões fornecidas são fictícias. Não inserir dados pessoais reais.
+
+## 1. Problema e solução
+
+Em infraestrutura compartilhada de recarga de veículos elétricos, administrar consumo por usuário, alocar custos e antecipar situações de atenção pode ser difícil. O EV ChargeOps registra sessões, calcula rateio individual por kWh e exibe informações de inteligência operacional para responsáveis pela infraestrutura.
+
+O projeto considera como referência o carregador **GoodWe HCA G2**, instalado no estacionamento L1 da FIAP Aclimação, conforme o desafio. O projeto **não possui acesso ao HCA G2 nem à plataforma GoodWe/SEMS+**; as entradas são manuais ou geradas por simulador reproduzível.
+
+A **Sprint 1** definiu arquitetura e proposta. A **Sprint 2** implementa backend, persistência, IA e dashboard React conectado aos endpoints, com código e evidências de execução.
+
+## 2. O que foi implementado
+
+| Entrega | Como funciona | Onde encontrar |
+|---|---|---|
+| API de sessões | Lista usuários/carregadores, cria e consulta sessões, rejeita IDs repetidos, horários inválidos e conflito no carregador | `backend/app/main.py` |
+| Persistência | SQLAlchemy com PostgreSQL como configuração padrão; SQLite para testes/demo local | `backend/app/database.py`, `models.py`, `docker-compose.sprint2.yml` |
+| Rateio mensal | Soma kWh válidos por usuário, aplica tarifa e taxa fixa somente a usuário com consumo faturável | `backend/app/billing.py`, `GET /api/invoices` |
+| Previsão de demanda | RandomForestRegressor com dados históricos diários e validação cronológica versus média móvel de 7 dias | `backend/app/intelligence.py` |
+| Detecção de anomalias | IsolationForest em sessões validadas; scores e indicadores descritivos | `backend/app/intelligence.py` |
+| Recomendações | Regras ligadas aos resultados dos modelos, pedindo revisão humana quando necessário | `GET /api/ai/recommendations` |
+| Dashboard React | Visão geral, sessões, rateio e inteligência artificial; envia novos registros à API | `frontend/index.html`, `frontend/js/app.js` |
+| Testes e evidências | Testes de negócio, IA e integração; capturas da interface; JSON com respostas reais da API | `backend/tests/`, `docs/sprint-02/evidencias/` |
+
+**Não foram implementados:** login e permissões reais, integração GoodWe/SEMS+, pagamentos, acionamento remoto do carregador, emissão fiscal e sistema de cobrança persistente. Esses itens requerem infraestrutura e testes de segurança adicionais.
+
+## 3. Execução rápida — Windows (mais simples)
+
+Requer Python **3.11 ou superior**, navegador e internet para a primeira instalação das dependências Python.
+
+1. Baixe o repositório, extraia (caso esteja compactado) e abra a pasta principal.
+2. Dê dois cliques em **`INICIAR_DEMO_WINDOWS.bat`**.
+3. Aguarde a instalação inicial, criação da base fictícia e abertura do navegador.
+4. Acesse **http://127.0.0.1:5173/**. A documentação da API fica em **http://127.0.0.1:8000/docs**.
+5. Para encerrar, feche as duas janelas de terminal que serão abertas (API e servidor de arquivos do frontend).
+
+Essa modalidade inicia **SQLite local**, sem Docker. **Ela não constitui evidência de funcionamento em PostgreSQL**. Para validação da arquitetura prometida na Sprint 1, use a modalidade abaixo.
+
+## 4. Execução com PostgreSQL 16 (arquitetura planejada)
+
+Requer Python 3.11+, Docker Desktop aberto, Docker Compose disponível e acesso às portas locais **5432, 8000 e 5173**.
+
+Abra **`INICIAR_POSTGRES_WINDOWS.bat`** (na primeira vez, Docker baixará a imagem do PostgreSQL). O script instala dependências Python se necessário, sobe o PostgreSQL, cria tabelas, carrega as sessões sintéticas e inicia o backend e o React.
+
+Também pode executar manualmente a partir da raiz do repositório, em PowerShell:
+
+```powershell
+docker compose -f docker-compose.sprint2.yml up -d --wait
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+$env:DATABASE_URL = "postgresql+psycopg://chargeops:chargeops_local@localhost:5432/chargeops"
+cd backend
+..\.venv\Scripts\python.exe -m app.seed_history
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Abra um **segundo PowerShell** na raiz do repositório:
+
+```powershell
+cd frontend
+py -3 -m http.server 5173 --bind 127.0.0.1
+```
+
+Depois, abra http://127.0.0.1:5173/. Em caso de conflito de portas, encerre servidores anteriores antes de iniciar outro modo. O arquivo `backend/.env.example` lista parâmetros; o protótipo lê variáveis do ambiente e **não carrega `.env` automaticamente**.
+
+A interface é escrita em **React + ReactDOM UMD 16.0.0**, incluídos localmente e sem npm. É uma decisão de simplificação específica do MVP; em produção, atualizar React, fazer build, implementar autenticação e avaliar segurança. Há crédito/licença em `frontend/vendor/LICENCA_E_VERSAO.txt`.
+
+## 5. Navegação na interface
+
+**Visão geral:** consumo faturável, receita ilustrativa, sessões, pendências, previsão e recomendações.
+
+**Sessões de recarga:** cadastrar usuário, carregador, horário inicial/final, energia medida e situação; consultar histórico. O ID é gerado automaticamente no frontend. Ao salvar, os cálculos do backend e os resultados de IA são consultados novamente. Uma sessão com `falha_comunicacao` permanece não validada e fora do rateio.
+
+**Rateio e faturas:** para o mês selecionado, visualizar detalhamento por usuário (energia, tarifa, manutenção, total e pendências). Os valores da tarifa e da manutenção mostrados no painel são consultados em `/api/config`, sem cifras fixas na interface.
+
+**Inteligência artificial:** verificar MAE, comparação com referência, previsões, sessões atípicas e recomendações resultantes.
+
+## 6. Política de consumo e rateio
+
+A tarifa demonstrativa padrão é **R$ 0,90 por kWh** e a manutenção é **R$ 5,00 por usuário que consumiu energia faturável no mês**. Ambas são configuráveis pelas variáveis de ambiente `TARIFA_KWH` e `MANUTENCAO_MENSAL`, sendo obrigatório usar valores não negativos.
+
+`valor_energia = soma(kWh validados) × tarifa_kWh`
+
+`total_usuario = valor_energia + manutencao_unica` (apenas se houver consumo faturável).
+
+O backend calcula com `Decimal` e arredonda valores monetários a centavos em `billing.py`. Uma sessão é atribuída ao **mês local de São Paulo do seu início**. Sessões interrompidas **validadas** entram com a energia efetivamente medida; falhas de comunicação não validadas ficam pendentes. O sistema não soma energia estimada ou não registrada.
+
+Exemplo com os dados iniciais de **outubro/2026**, antes de inserir novas sessões:
+
+| Usuário | kWh cobrados | Energia | Manutenção | Total | Estado |
+|---|---:|---:|---:|---:|---|
+| U001 | 18,500 | R$ 16,65 | R$ 5,00 | **R$ 21,65** | calculada |
+| U002 | 24,000 | R$ 21,60 | R$ 5,00 | **R$ 26,60** | calculada |
+| U003 | 0,000 | R$ 0,00 | R$ 0,00 | **R$ 0,00** | sem consumo |
+| U004 | 0,000 | R$ 0,00 | R$ 0,00 | **R$ 0,00** | 1 pendência |
+
+Os totais são dinâmicos e mudam conforme as sessões registradas. **Não há transação financeira real.**
+
+## 7. IA estrutural — fluxo, modelos e limites
+
+Os endpoints de IA e o rateio consultam **a mesma tabela de sessões**. A IA não é um elemento isolado da interface:
+
+1. O usuário cadastra uma sessão no React → `POST /api/sessions` → banco.
+2. O rateio (`GET /api/invoices`) considera somente sessões validadas do mês.
+3. A previsão (`GET /api/ai/forecast`) reúne sessões validadas por dia local, preenche dias sem consumo, treina Random Forest com variáveis históricas sem o alvo presente e prevê 7 dias.
+4. A detecção (`GET /api/ai/anomalies`) treina Isolation Forest para sinalizar comportamentos atípicos nas sessões validadas.
+5. As recomendações (`GET /api/ai/recommendations`) combinam resultados desses modelos com regras transparentes de decisão. O React exibe os resultados atualizados.
+
+**Métricas:** o modelo de previsão usa avaliação cronológica de um passo à frente e comparação com a média móvel de 7 dias, reportando MAE. Os valores podem indicar desempenho **inferior** ao baseline — e então o sistema recomenda não automatizar agendamentos. O histórico sintético não comprova desempenho operacional nem capacidade de generalização. O modelo só é executado com histórico mínimo (35 dias para previsão e 25 sessões validadas para anomalias). Os outliers são **estatísticos**, não comprovação de fraude ou defeito.
+
+**Origem:** as 99 sessões sintéticas adicionadas a julho–setembro de 2026 são determinísticas (`backend/app/seed_history.py`). A última data observada define o horizonte de previsão; não é previsão meteorológica nem consumo futuro real. Nenhuma API ou dado privado GoodWe foi acessado.
+
+## 8. Endpoints principais
+
+| Método | Rota | Resultado |
+|---|---|---|
+| GET | `/api/health` | status da API |
+| GET | `/api/config` | tarifa por kWh e manutenção efetivamente configuradas |
+| GET | `/api/users` | catálogo de usuários fictícios |
+| GET | `/api/chargers` | carregadores simulados |
+| POST | `/api/sessions` | cadastra sessão validada/pendente |
+| GET | `/api/sessions` | lista sessões; permite `?period=AAAA-MM` |
+| GET | `/api/invoices?period=2026-10` | rateio mensal |
+| GET | `/api/ai/forecast` | demanda e métricas |
+| GET | `/api/ai/anomalies` | scores e sinais estatísticos |
+| GET | `/api/ai/recommendations` | recomendações rastreáveis |
+
+Swagger interativo: http://127.0.0.1:8000/docs.
+
+## Evidências visuais e verificação para a banca
+
+As cinco capturas abaixo representam o dashboard React executado com respostas da API FastAPI e um banco SQLite de demonstração. O código completo, os testes e o JSON com resultados reproduzíveis estão no repositório.
+
+![Visão geral EV ChargeOps](docs/sprint-02/evidencias/01-dashboard.webp)
+
+| Tela | Evidência |
+|---|---|
+| Visão geral | [Dashboard](docs/sprint-02/evidencias/01-dashboard.webp) |
+| Sessões | [Registro e histórico](docs/sprint-02/evidencias/02-sessoes.webp) |
+| Rateio | [Cobrança individual e tarifa](docs/sprint-02/evidencias/03-rateio.webp) |
+| IA | [Previsões, anomalias e recomendações](docs/sprint-02/evidencias/04-inteligencia-artificial.webp) |
+| Cadastro | [Sessão cadastrada e confirmada](docs/sprint-02/evidencias/05-cadastro-confirmado.webp) |
+
+**Evidências reproduzíveis:** [28 testes automatizados](docs/sprint-02/evidencias/resultados_testes_finais.txt) · [saída da demonstração](docs/sprint-02/evidencias/saida_demo.txt) · [dados JSON de IA](docs/sprint-02/evidencias/ia_resultados_demo.json) · [decisões e diferenças da Sprint 1](docs/sprint-02/decisoes_finais.md).
+
+## Rastreabilidade da rubrica — Sprint 2
+
+| Critério FIAP | Como verificar | Limitação declarada |
+|---|---|---|
+| Lógica central (3,0) | `backend/app/main.py` e `billing.py`; `POST /api/sessions`; `GET /api/invoices`; testes de API/rateio | Sessões simuladas; faturas sob demanda |
+| IA estrutural (3,0) | `backend/app/intelligence.py`; três endpoints de IA; painel e `test_ai.py` | Dados sintéticos; desempenho não garante uso real |
+| Evidências (2,0) | Imagens acima, JSON e resultados dos testes; roteiro de execução | Validados com SQLite, não com PostgreSQL real |
+| Autoria e compreensão (1,0) | Regras documentadas, módulos pequenos e testes de cenário | Explicação oral no pitch individual |
+| README e GitHub (1,0) | Este README, diagramas da Sprint 1, documentação Sprint 2 e commits | Sem autenticação ou integração SEMS+ física |
+
+## 9. Como testar e comprovar
+
+A partir de `backend/` e com Python/demais dependências instalados:
+
+```powershell
+..\.venv\Scripts\python.exe -m pytest -q
+..\.venv\Scripts\python.exe -m app.demo_ia --saida ..\docs\sprint-02\evidencias\ia_resultados_demo.json
+```
+
+O teste rápido de IA **usa SQLite isolado e TestClient**. Os testes cobrem rateio, validações, cronologia, anomalias, integração e CORS. Os resultados desta versão estão em `docs/sprint-02/evidencias/resultados_testes_finais.txt`. Também há capturas em WebP do dashboard, cadastro, rateio e IA em `docs/sprint-02/evidencias/`.
+
+**Sobre as capturas:** foram obtidas executando React num navegador automatizado com respostas do FastAPI realmente executado sobre SQLite; a navegação de rede direta foi intermediada por ponte de teste devido a restrições do navegador da infraestrutura. Essas imagens representam a interface em execução, **não comprovam** que PostgreSQL ou o navegador do Windows foram testados. Fazer a verificação local na modalidade PostgreSQL antes da entrega.
+
+## 10. Estrutura
+
+```text
+README.md                         documentação final
+INICIAR_DEMO_WINDOWS.bat          execução rápida SQLite
+INICIAR_POSTGRES_WINDOWS.bat      execução PostgreSQL/Docker
+docker-compose.sprint2.yml        PostgreSQL 16
+backend/app/                     API, banco, rateio, IA, gerador de dados
+backend/tests/                   testes automatizados
+backend/requirements.txt         dependências Python
+frontend/index.html              aplicação React
+frontend/js/app.js               telas, formulário, integração HTTP
+frontend/css/style.css           visual do dashboard
+frontend/vendor/                 bibliotecas React locais e licença
+docs/sprint-02/                  decisões e evidências
+entrega_sprint_02.txt             link para o repositório (após publicar)
+```
+
+**Continuidade com a Sprint 1:** os diagramas originais permanecem em `docs/`, enquanto uma cópia integral do README original está em `docs/sprint-01/README_original_Sprint01.md`. Consulte `docs/sprint-02/decisoes_finais.md` para justificativas de escopo e desvios.
+
+## 11. Avaliação, limites e melhorias
+
+- Lógica de sessões, rateio, IA integrada e interface funcional com dados sintéticos.
+- Sem autenticação/autorização; somente execução local e usuários fictícios.
+- React 16.0.0 é obsoleto para produção; atualizar antes de qualquer implantação em rede.
+- PostgreSQL é a arquitetura padrão, mas neste ambiente a execução e as imagens foram verificadas com SQLite. A validação PostgreSQL precisa ocorrer no computador com Docker.
+- Sem integração GoodWe/SEMS+, carregador físico, gateway fiscal, meios de pagamento ou faturas persistidas.
+- Próximos passos para produto real: importação autenticada do carregador, proteção de dados, auditoria de sessões, tarifação temporal, autorização multiusuário, testes em PostgreSQL e validação da qualidade preditiva com séries reais.
+
+**Entregável FIAP ON:** enviar **um arquivo `.TXT` contendo o link do repositório atualizado**. A submissão do `.TXT` deve acontecer **depois** que todos os arquivos forem publicados no GitHub e verificados. Conforme o enunciado, cada estudante deverá gravar seu pitch individual de cinco minutos na avaliação presencial obrigatória.
+
+
+---
+
+# Anexo — Registro original completo da Sprint 1
+
+O texto a seguir foi preservado para rastreabilidade histórica. A versão original também está disponível em [docs/sprint-01/README_original_Sprint01.md](docs/sprint-01/README_original_Sprint01.md).
+
 # Enterprise Challenge 2026 – EV ChargeOps
 
 ## Sprint 01 – Pesquisa e Documentação
@@ -1015,49 +1224,3 @@ Por fim, a Sprint 01 permitiu consolidar o entendimento do problema, definir a a
 * Zaptec.
 * SENATRAN.
 * Instituto Brasileiro de Geografia e Estatística (IBGE).
-
-
----
-
-# Sprint 02 — Protótipo funcional (outubro de 2026)
-
-> **Situação:** protótipo acadêmico com dados fictícios. Não há integração ativa com carregador GoodWe/SEMS+, cobrança real nem autenticação para uso em produção.
-
-## Implementação
-
-A arquitetura proposta na Sprint 01 foi desenvolvida com **backend Python/FastAPI, SQLAlchemy, PostgreSQL como banco planejado e IA scikit-learn**. Os testes automatizados foram realizados com SQLite isolado. O frontend usa **React** e consulta as rotas reais da API.
-
-| Requisito | Implementação |
-| --- | --- |
-| Sessões | `POST /api/sessions` registra com validação; `GET /api/sessions` consulta |
-| Rateio | `GET /api/invoices?period=2026-10` calcula energia validada × tarifa + manutenção mensal por usuário ativo |
-| IA preditiva | `GET /api/ai/forecast`: Random Forest, avaliação cronológica e comparação com média móvel |
-| Anomalias | `GET /api/ai/anomalies`: Isolation Forest nos registros de sessão |
-| Recomendações | `GET /api/ai/recommendations`: usa previsão e anomalias, sem decisões financeiras automáticas |
-| Visualização | `frontend/index.html`: React com visão geral, sessões, rateio e IA |
-| Evidências | `docs/sprint-02/evidencias/testes_execucao.txt` e testes reproduzíveis em `backend/tests/` |
-
-## Como executar
-
-**Windows, demonstração sem Docker:** instale Python 3.11+, baixe este repositório e execute `INICIAR_DEMO_WINDOWS.bat`. Na primeira vez, é necessária conexão à internet para baixar dependências Python e os scripts React (CDN). Interface em `http://127.0.0.1:5173/`; Swagger em `http://127.0.0.1:8000/docs`.
-
-**Windows com PostgreSQL:** instale Python 3.11+ e Docker Desktop, abra o Docker e execute `INICIAR_POSTGRES_WINDOWS.bat`. Usa PostgreSQL configurado em `docker-compose.sprint2.yml`. A execução efetiva nessa modalidade ainda depende de validação local.
-
-**Testes:** depois de executar o script e instalar as dependências:
-
-```powershell
-cd backend
-..\.venv\Scripts\python.exe -m pytest -q
-```
-
-Um exemplo do rateio do mês de outubro/2026 antes da inclusão de novas sessões: U001, 18,5 kWh, R$ 21,65; U002, 24 kWh, R$ 26,60 (tarifa demonstrativa R$ 0,90/kWh e manutenção R$ 5,00). Os valores são calculados pela API e a interface os consulta, sem cobrança efetiva.
-
-### Uso estrutural da IA e limitações
-
-As sessões que alimentam o rateio são as mesmas que alimentam os modelos de IA. O histórico é sintético e determinístico, não uma amostra operacional do carregador. Na execução demonstrativa, o modelo preditivo teve MAE 14,575 contra MAE 9,848 da média móvel de referência: **não superou o baseline**. Foram sinalizadas 8 anomalias e produzidas 3 recomendações. O resultado apoia revisão humana, não comprova fraude ou confiabilidade preditiva em produção.
-
-### Desvios em relação à Sprint 01
-
-Login, papéis de usuário, cadastro administrativo completo, faturas persistentes, pagamentos e conexão SEMS+/GoodWe não foram implementados neste MVP. O rateio mensal é calculado na consulta; os usuários e carregadores de exemplo são criados pelo gerador de dados. A interface React foi simplificada para execução local, sem build, usando scripts públicos CDN; dependem de internet. Os testes usam SQLite: **PostgreSQL ainda não foi verificado no computador do grupo**. Essas limitações não devem ser interpretadas como recursos entregues.
-
-Os documentos e diagramas originais da Sprint 01 permanecem em `docs/`. As decisões técnicas da Sprint 02 estão documentadas em `docs/sprint-02/decisoes_implementacao.md`. O pitch presencial individual de cinco minutos continua exigido pela FIAP.
