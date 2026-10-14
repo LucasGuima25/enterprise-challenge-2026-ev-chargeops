@@ -1015,3 +1015,49 @@ Por fim, a Sprint 01 permitiu consolidar o entendimento do problema, definir a a
 * Zaptec.
 * SENATRAN.
 * Instituto Brasileiro de Geografia e Estatística (IBGE).
+
+
+---
+
+# Sprint 02 — Protótipo funcional (outubro de 2026)
+
+> **Situação:** protótipo acadêmico com dados fictícios. Não há integração ativa com carregador GoodWe/SEMS+, cobrança real nem autenticação para uso em produção.
+
+## Implementação
+
+A arquitetura proposta na Sprint 01 foi desenvolvida com **backend Python/FastAPI, SQLAlchemy, PostgreSQL como banco planejado e IA scikit-learn**. Os testes automatizados foram realizados com SQLite isolado. O frontend usa **React** e consulta as rotas reais da API.
+
+| Requisito | Implementação |
+| --- | --- |
+| Sessões | `POST /api/sessions` registra com validação; `GET /api/sessions` consulta |
+| Rateio | `GET /api/invoices?period=2026-10` calcula energia validada × tarifa + manutenção mensal por usuário ativo |
+| IA preditiva | `GET /api/ai/forecast`: Random Forest, avaliação cronológica e comparação com média móvel |
+| Anomalias | `GET /api/ai/anomalies`: Isolation Forest nos registros de sessão |
+| Recomendações | `GET /api/ai/recommendations`: usa previsão e anomalias, sem decisões financeiras automáticas |
+| Visualização | `frontend/index.html`: React com visão geral, sessões, rateio e IA |
+| Evidências | `docs/sprint-02/evidencias/testes_execucao.txt` e testes reproduzíveis em `backend/tests/` |
+
+## Como executar
+
+**Windows, demonstração sem Docker:** instale Python 3.11+, baixe este repositório e execute `INICIAR_DEMO_WINDOWS.bat`. Na primeira vez, é necessária conexão à internet para baixar dependências Python e os scripts React (CDN). Interface em `http://127.0.0.1:5173/`; Swagger em `http://127.0.0.1:8000/docs`.
+
+**Windows com PostgreSQL:** instale Python 3.11+ e Docker Desktop, abra o Docker e execute `INICIAR_POSTGRES_WINDOWS.bat`. Usa PostgreSQL configurado em `docker-compose.sprint2.yml`. A execução efetiva nessa modalidade ainda depende de validação local.
+
+**Testes:** depois de executar o script e instalar as dependências:
+
+```powershell
+cd backend
+..\.venv\Scripts\python.exe -m pytest -q
+```
+
+Um exemplo do rateio do mês de outubro/2026 antes da inclusão de novas sessões: U001, 18,5 kWh, R$ 21,65; U002, 24 kWh, R$ 26,60 (tarifa demonstrativa R$ 0,90/kWh e manutenção R$ 5,00). Os valores são calculados pela API e a interface os consulta, sem cobrança efetiva.
+
+### Uso estrutural da IA e limitações
+
+As sessões que alimentam o rateio são as mesmas que alimentam os modelos de IA. O histórico é sintético e determinístico, não uma amostra operacional do carregador. Na execução demonstrativa, o modelo preditivo teve MAE 14,575 contra MAE 9,848 da média móvel de referência: **não superou o baseline**. Foram sinalizadas 8 anomalias e produzidas 3 recomendações. O resultado apoia revisão humana, não comprova fraude ou confiabilidade preditiva em produção.
+
+### Desvios em relação à Sprint 01
+
+Login, papéis de usuário, cadastro administrativo completo, faturas persistentes, pagamentos e conexão SEMS+/GoodWe não foram implementados neste MVP. O rateio mensal é calculado na consulta; os usuários e carregadores de exemplo são criados pelo gerador de dados. A interface React foi simplificada para execução local, sem build, usando scripts públicos CDN; dependem de internet. Os testes usam SQLite: **PostgreSQL ainda não foi verificado no computador do grupo**. Essas limitações não devem ser interpretadas como recursos entregues.
+
+Os documentos e diagramas originais da Sprint 01 permanecem em `docs/`. As decisões técnicas da Sprint 02 estão documentadas em `docs/sprint-02/decisoes_implementacao.md`. O pitch presencial individual de cinco minutos continua exigido pela FIAP.
